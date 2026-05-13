@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>榮富作業抽查抽籤系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .number-card {
+            animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+        }
+
+        @keyframes pop-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+    <div class="max-w-4xl mx-auto">
+        <!-- 標題 -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">榮富作業抽查抽籤系統</h1>
+            <p class="text-slate-500 font-medium">智慧分段・公平隨機・接續抽籤</p>
+        </header>
+
+        <!-- 設定面板 -->
+        <div id="setup-panel" class="bg-white rounded-3xl shadow-2xl p-8 border border-slate-100 transition-all">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 最後一號 -->
+                <div class="space-y-3">
+                    <label class="block text-slate-700 font-bold flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        班級最後一號 (1 ~ N)
+                    </label>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="adjustValue('maxNumber', -1)" class="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition font-black text-xl">-</button>
+                        <input type="number" id="maxNumber" value="30" min="1" class="w-24 text-center border-2 border-slate-200 rounded-xl p-3 font-bold text-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
+                        <button onclick="adjustValue('maxNumber', 1)" class="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition font-black text-xl">+</button>
+                    </div>
+                </div>
+
+                <!-- 抽籤人數 -->
+                <div class="space-y-3">
+                    <label class="block text-slate-700 font-bold flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        每回抽籤人數
+                    </label>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="adjustValue('drawCount', -1)" class="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition font-black text-xl">-</button>
+                        <input type="number" id="drawCount" value="6" min="1" class="w-24 text-center border-2 border-slate-200 rounded-xl p-3 font-bold text-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
+                        <button onclick="adjustValue('drawCount', 1)" class="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition font-black text-xl">+</button>
+                    </div>
+                </div>
+
+                <!-- 分段設定 -->
+                <div class="md:col-span-2 p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="checkbox" id="isSegmented" checked class="w-6 h-6 text-indigo-600 border-slate-300 rounded-lg focus:ring-indigo-500 transition cursor-pointer" onchange="toggleSegmentUI()">
+                            <span class="ml-3 text-slate-700 font-bold text-lg group-hover:text-indigo-600 transition">啟用智慧分段抽籤</span>
+                        </label>
+                        <span id="segment-badge" class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">推薦</span>
+                    </div>
+                    
+                    <div id="segment-controls" class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4 transition-all duration-300">
+                        <span class="text-sm text-slate-500">分段點：</span>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" id="splitPoint" value="15" class="w-24 text-center border-2 border-slate-200 rounded-lg p-2 font-bold focus:border-indigo-500 outline-none">
+                            <button onclick="resetSplitPoint()" class="text-xs bg-white border border-slate-200 px-4 py-2 rounded-lg hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm font-bold">重設為中位數</button>
+                        </div>
+                        <p class="text-xs text-slate-400">※ 系統將自動從 1~<span id="split-val-text">15</span> 抽一半，剩餘從後段抽取。</p>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startInitialDraw()" class="mt-10 w-full gradient-bg text-white py-5 rounded-2xl font-black text-2xl shadow-xl hover:shadow-indigo-200 hover:-translate-y-1 transition-all active:scale-[0.98]">
+                開始抽籤
+            </button>
+        </div>
+
+        <!-- 結果面板 -->
+        <div id="result-panel" class="hidden space-y-6">
+            <!-- 歷史紀錄 -->
+            <div id="history-container" class="flex flex-wrap gap-3"></div>
+
+            <div class="bg-white rounded-3xl shadow-2xl p-10 text-center border border-slate-100 relative overflow-hidden">
+                <div id="drawing-overlay" class="absolute inset-0 bg-white bg-opacity-90 z-10 flex flex-center flex-col items-center justify-center hidden">
+                    <div class="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-indigo-600 font-bold animate-pulse text-xl">正在抽取幸運學生...</p>
+                </div>
+
+                <div id="round-label" class="inline-block px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-bold mb-6 tracking-widest shadow-lg">第一回抽籤</div>
+                
+                <div id="number-display" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10">
+                    <!-- 數字卡片 -->
+                </div>
+
+                <div class="flex flex-col md:flex-row justify-center gap-4 border-t pt-8">
+                    <button id="btn-continue" onclick="continueDraw()" class="flex-1 bg-emerald-500 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-600 transition shadow-lg active:scale-[0.98] flex items-center justify-center">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                        接續抽籤 (剩餘: <span id="remaining-rounds">2</span> 回)
+                    </button>
+                    <button onclick="resetSystem()" class="flex-1 bg-slate-500 text-white py-5 rounded-2xl font-black text-xl hover:bg-slate-600 transition shadow-lg active:scale-[0.98] flex items-center justify-center">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        重新開始
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 自定義彈窗 -->
+        <div id="message-box" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-in transform transition-all border border-slate-100">
+                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <p id="message-text" class="text-xl font-bold text-slate-800 mb-6"></p>
+                <button onclick="closeMessage()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-slate-700 transition shadow-md">知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRound = 1;
+        let drawnHistory = []; 
+        let allUsedNumbers = new Set();
+
+        // 輸入值微調
+        function adjustValue(id, delta) {
+            const input = document.getElementById(id);
+            let val = parseInt(input.value) + delta;
+            if (val < 1) val = 1;
+            input.value = val;
+            if (id === 'maxNumber') {
+                resetSplitPoint();
+            }
+        }
+
+        // 重設中位數
+        function resetSplitPoint() {
+            const max = parseInt(document.getElementById('maxNumber').value);
+            const val = Math.floor(max / 2);
+            document.getElementById('splitPoint').value = val;
+            document.getElementById('split-val-text').innerText = val;
+        }
+
+        // 分段 UI 開關
+        function toggleSegmentUI() {
+            const isChecked = document.getElementById('isSegmented').checked;
+            const controls = document.getElementById('segment-controls');
+            const badge = document.getElementById('segment-badge');
+            
+            controls.style.opacity = isChecked ? '1' : '0.4';
+            controls.style.pointerEvents = isChecked ? 'auto' : 'none';
+            badge.style.display = isChecked ? 'block' : 'none';
+        }
+
+        // 監聽分段點手動輸入
+        document.getElementById('splitPoint').addEventListener('input', (e) => {
+            document.getElementById('split-val-text').innerText = e.target.value || '0';
+        });
+
+        function showMessage(text) {
+            document.getElementById('message-text').innerText = text;
+            document.getElementById('message-box').classList.remove('hidden');
+        }
+
+        function closeMessage() {
+            document.getElementById('message-box').classList.add('hidden');
+        }
+
+        function startInitialDraw() {
+            const max = parseInt(document.getElementById('maxNumber').value);
+            const count = parseInt(document.getElementById('drawCount').value);
+            
+            if (count > max) {
+                showMessage(`抽籤人數 (${count}) 不能大於總人數 (${max})！`);
+                return;
+            }
+
+            resetState();
+            executeDraw();
+        }
+
+        function resetState() {
+            currentRound = 1;
+            drawnHistory = [];
+            allUsedNumbers.clear();
+        }
+
+        async function executeDraw() {
+            const max = parseInt(document.getElementById('maxNumber').value);
+            const count = parseInt(document.getElementById('drawCount').value);
+            const isSegmented = document.getElementById('isSegmented').checked;
+            const split = parseInt(document.getElementById('splitPoint').value);
+
+            // 顯示抽籤動畫
+            const overlay = document.getElementById('drawing-overlay');
+            overlay.classList.remove('hidden');
+            document.getElementById('setup-panel').classList.add('hidden');
+            document.getElementById('result-panel').classList.remove('hidden');
+
+            // 模擬計算過程
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            let winners = [];
+
+            if (isSegmented) {
+                let poolA = []; 
+                let poolB = []; 
+
+                for (let i = 1; i <= max; i++) {
+                    if (!allUsedNumbers.has(i)) {
+                        if (i <= split) poolA.push(i);
+                        else poolB.push(i);
+                    }
+                }
+
+                // 分配名額：前段抽一半（無條件捨去），剩下給後段
+                let countA = Math.floor(count / 2);
+                let countB = count - countA;
+
+                // 若池子不夠，自動平衡名額
+                if (poolA.length < countA) {
+                    let diff = countA - poolA.length;
+                    countA = poolA.length;
+                    countB += diff;
+                }
+                if (poolB.length < countB) {
+                    let diff = countB - poolB.length;
+                    countB = poolB.length;
+                    countA += diff;
+                }
+
+                // 若總量還是不夠
+                if (poolA.length + poolB.length < count) {
+                    overlay.classList.add('hidden');
+                    showMessage('剩餘人數不足以進行抽籤！');
+                    return;
+                }
+
+                winners = [...pickRandom(poolA, countA), ...pickRandom(poolB, countB)];
+            } else {
+                let pool = [];
+                for (let i = 1; i <= max; i++) {
+                    if (!allUsedNumbers.has(i)) pool.push(i);
+                }
+
+                if (pool.length < count) {
+                    overlay.classList.add('hidden');
+                    showMessage('剩餘人數不足以進行抽籤！');
+                    return;
+                }
+                winners = pickRandom(pool, count);
+            }
+
+            winners.sort((a, b) => a - b);
+            drawnHistory.push(winners);
+            winners.forEach(n => allUsedNumbers.add(n));
+
+            overlay.classList.add('hidden');
+            renderResults();
+        }
+
+        // Fisher-Yates Shuffle
+        function pickRandom(array, n) {
+            let result = [...array];
+            for (let i = result.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [result[i], result[j]] = [result[j], result[i]];
+            }
+            return result.slice(0, n);
+        }
+
+        function renderResults() {
+            const label = document.getElementById('round-label');
+            label.innerText = `第 ${currentRound} 回抽籤`;
+            
+            // 設定回數顏色
+            const colors = ['bg-indigo-600', 'bg-purple-600', 'bg-fuchsia-600'];
+            label.className = `inline-block px-6 py-2 ${colors[currentRound-1] || 'bg-slate-600'} text-white rounded-full text-sm font-bold mb-6 tracking-widest shadow-lg`;
+
+            const display = document.getElementById('number-display');
+            display.innerHTML = '';
+            
+            const currentWinners = drawnHistory[currentRound - 1];
+            currentWinners.forEach((num, index) => {
+                const card = document.createElement('div');
+                card.className = 'number-card bg-white border-2 border-slate-100 rounded-3xl flex flex-col items-center justify-center p-6 shadow-xl relative group';
+                // 延遲動畫效果
+                card.style.animationDelay = `${index * 0.1}s`;
+                
+                card.innerHTML = `
+                    <span class="text-xs font-bold text-slate-400 mb-1 uppercase tracking-tighter">號碼</span>
+                    <span class="text-4xl md:text-5xl font-black text-slate-800">${num}</span>
+                    <div class="absolute inset-0 border-4 border-indigo-500 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                `;
+                display.appendChild(card);
+            });
+
+            renderHistory();
+
+            const continueBtn = document.getElementById('btn-continue');
+            const remaining = 3 - currentRound;
+            document.getElementById('remaining-rounds').innerText = remaining;
+            
+            if (remaining <= 0) {
+                continueBtn.classList.add('opacity-40', 'grayscale', 'cursor-not-allowed');
+                continueBtn.disabled = true;
+            } else {
+                continueBtn.classList.remove('opacity-40', 'grayscale', 'cursor-not-allowed');
+                continueBtn.disabled = false;
+            }
+        }
+
+        function renderHistory() {
+            const historyContainer = document.getElementById('history-container');
+            historyContainer.innerHTML = '';
+
+            drawnHistory.forEach((winners, idx) => {
+                const isCurrent = (idx + 1 === currentRound);
+                const box = document.createElement('div');
+                box.className = `flex items-center px-4 py-3 rounded-2xl text-sm font-bold border transition-all ${isCurrent ? 'bg-indigo-50 border-indigo-200 text-indigo-700 ring-2 ring-indigo-100' : 'bg-slate-50 border-slate-200 text-slate-500'}`;
+                
+                box.innerHTML = `
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center mr-3 ${isCurrent ? 'bg-indigo-600 text-white' : 'bg-slate-300 text-white'} text-[10px]">
+                        ${idx + 1}
+                    </div>
+                    <span>第 ${idx + 1} 回結果：<span class="${isCurrent ? 'text-indigo-900' : 'text-slate-700'}">${winners.join('、')}</span></span>
+                `;
+                historyContainer.appendChild(box);
+            });
+        }
+
+        function continueDraw() {
+            if (currentRound >= 3) return;
+            currentRound++;
+            executeDraw();
+        }
+
+        function resetSystem() {
+            resetState();
+            document.getElementById('setup-panel').classList.remove('hidden');
+            document.getElementById('result-panel').classList.add('hidden');
+            
+            // 還原按鈕
+            const continueBtn = document.getElementById('btn-continue');
+            continueBtn.classList.remove('opacity-40', 'grayscale', 'cursor-not-allowed');
+            continueBtn.disabled = false;
+        }
+
+        window.onload = () => {
+            resetSplitPoint();
+            toggleSegmentUI();
+        };
+    </script>
+</body>
+</html>
