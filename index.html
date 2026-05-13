@@ -53,7 +53,7 @@
                 <img src="lfes.png" alt="榮富國小校徽" class="school-logo h-24 w-auto mb-4 drop-shadow-md" onerror="this.parentElement.removeChild(this)">
                 <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">榮富作業抽查抽籤系統</h1>
             </div>
-            <p class="text-slate-500 font-medium">智慧分段・自動計算回數・公平公正</p>
+            <p class="text-slate-500 font-medium">智慧分段・自動計算回數・正備取邏輯</p>
         </header>
 
         <!-- 設定面板 -->
@@ -118,9 +118,8 @@
 
         <!-- 結果面板 -->
         <div id="result-panel" class="hidden space-y-6">
-            <div id="history-container" class="flex flex-wrap gap-3"></div>
-
-            <div class="bg-white rounded-3xl shadow-2xl p-10 text-center border border-slate-100 relative overflow-hidden">
+            <!-- 抽籤主操作卡片 (按鈕置頂) -->
+            <div class="bg-white rounded-3xl shadow-2xl p-10 text-center border border-slate-100 relative overflow-hidden min-h-[400px]">
                 <div id="drawing-overlay" class="absolute inset-0 bg-white bg-opacity-90 z-10 flex flex-center flex-col items-center justify-center hidden">
                     <div class="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
                     <p class="text-indigo-600 font-bold animate-pulse text-xl">正在智慧抽取...</p>
@@ -128,9 +127,8 @@
 
                 <div id="round-label" class="inline-block px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-bold mb-6 tracking-widest shadow-lg">第 1 / 9 回</div>
                 
-                <div id="number-display" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10"></div>
-
-                <div class="flex flex-col md:flex-row justify-center gap-4 border-t pt-8">
+                <!-- 按鈕區塊：移動到號碼上方 -->
+                <div class="flex flex-col md:flex-row justify-center gap-4 mb-10 pb-8 border-b border-slate-100">
                     <button id="btn-continue" onclick="continueDraw()" class="flex-1 bg-emerald-500 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-600 transition shadow-lg active:scale-[0.98] flex items-center justify-center">
                         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
                         接續抽籤
@@ -140,7 +138,13 @@
                         重新開始
                     </button>
                 </div>
+
+                <!-- 號碼顯示區：移動到按鈕下方 -->
+                <div id="number-display" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6"></div>
             </div>
+
+            <!-- 歷史紀錄與歷史紀錄：移動到最下方 -->
+            <div id="history-container" class="flex flex-col gap-3 mt-6"></div>
         </div>
 
         <!-- 訊息彈窗 -->
@@ -158,7 +162,6 @@
         let drawnHistory = []; 
         let allExcludedNumbers = new Set(); 
 
-        // 自動計算最大回數
         function calculateEstimatedRounds() {
             const max = parseInt(document.getElementById('maxNumber').value) || 0;
             const count = parseInt(document.getElementById('drawCount').value) || 0;
@@ -168,17 +171,12 @@
                 return 1;
             }
 
-            // 每回排除人數 = floor(抽籤人數 / 2)
             const excludePerRound = Math.floor(count / 2);
             
             let rounds = 1;
             if (excludePerRound > 0) {
-                // 公式：第一回消耗 count 人，之後每回消耗 excludePerRound 人
-                // 剩餘人數 pool = max - count
-                // 可額外進行回數 = floor(pool / excludePerRound)
                 rounds = Math.floor((max - count) / excludePerRound) + 1;
             } else {
-                // 如果每回都不排除(抽1人時)，理論回數為 pool/count，但為了系統穩定，設為班級人數
                 rounds = Math.floor(max / count);
             }
 
@@ -307,7 +305,6 @@
 
             drawnHistory.push(winners);
             
-            // 排除前一半號碼
             const excludeLimit = Math.floor(winners.length / 2);
             for (let k = 0; k < excludeLimit; k++) {
                 allExcludedNumbers.add(winners[k]);
@@ -358,8 +355,6 @@
             renderHistory();
 
             const continueBtn = document.getElementById('btn-continue');
-            
-            // 檢查是否還能進行下一回 (剩餘人數是否大於等於 drawCount)
             const max = parseInt(document.getElementById('maxNumber').value);
             const count = parseInt(document.getElementById('drawCount').value);
             const remainingCount = max - allExcludedNumbers.size;
@@ -374,10 +369,19 @@
         function renderHistory() {
             const historyContainer = document.getElementById('history-container');
             historyContainer.innerHTML = '';
+            
+            // 如果有紀錄才顯示標題
+            if (drawnHistory.length > 0) {
+                const title = document.createElement('h3');
+                title.className = "text-slate-400 text-sm font-bold ml-2 mb-2 uppercase tracking-widest";
+                title.innerText = "歷次抽籤紀錄";
+                historyContainer.appendChild(title);
+            }
+
             drawnHistory.forEach((winners, idx) => {
                 const isCurrent = (idx + 1 === currentRound);
                 const box = document.createElement('div');
-                box.className = `flex items-center px-4 py-3 rounded-2xl text-sm font-bold border transition-all ${isCurrent ? 'bg-indigo-50 border-indigo-200 text-indigo-700 ring-2 ring-indigo-100' : 'bg-slate-50 border-slate-200 text-slate-500'}`;
+                box.className = `flex items-center px-4 py-3 rounded-2xl text-sm font-bold border transition-all ${isCurrent ? 'bg-indigo-50 border-indigo-200 text-indigo-700 ring-2 ring-indigo-100' : 'bg-white border-slate-200 text-slate-500 shadow-sm'}`;
                 
                 const excludeLimit = Math.floor(winners.length / 2);
                 const excludedStr = winners.slice(0, excludeLimit).join('、');
@@ -407,7 +411,6 @@
             document.getElementById('btn-continue').style.display = 'flex';
         }
 
-        // 初始化監聽
         document.getElementById('maxNumber').addEventListener('input', calculateEstimatedRounds);
         document.getElementById('drawCount').addEventListener('input', calculateEstimatedRounds);
 
