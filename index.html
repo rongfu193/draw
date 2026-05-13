@@ -33,7 +33,6 @@
             min-height: 80px;
         }
 
-        /* 標示正取與備取的視覺效果 */
         .status-tag {
             position: absolute;
             top: -10px;
@@ -54,7 +53,7 @@
                 <img src="lfes.png" alt="榮富國小校徽" class="school-logo h-24 w-auto mb-4 drop-shadow-md" onerror="this.parentElement.removeChild(this)">
                 <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">榮富作業抽查抽籤系統</h1>
             </div>
-            <p class="text-slate-500 font-medium">智慧分段・隨機啟始・公平公正</p>
+            <p class="text-slate-500 font-medium">智慧分段・自動計算回數・正備取邏輯</p>
         </header>
 
         <!-- 設定面板 -->
@@ -93,19 +92,20 @@
                             <input type="checkbox" id="isSegmented" checked class="w-6 h-6 text-indigo-600 border-slate-300 rounded-lg focus:ring-indigo-500 transition cursor-pointer" onchange="toggleSegmentUI()">
                             <span class="ml-3 text-slate-700 font-bold text-lg group-hover:text-indigo-600 transition">啟用智慧分段輪流抽籤</span>
                         </label>
+                        <div id="rounds-estimate" class="px-4 py-1 bg-indigo-600 text-white text-xs font-bold rounded-full shadow-sm">預計可抽 9 回</div>
                     </div>
                     
                     <div id="segment-controls" class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4 transition-all duration-300">
-                        <span class="text-sm text-slate-500">分段點：</span>
+                        <span class="text-sm text-slate-500 font-bold">分段點：</span>
                         <div class="flex items-center space-x-2">
                             <input type="number" id="splitPoint" value="15" class="w-24 text-center border-2 border-slate-200 rounded-lg p-2 font-bold focus:border-indigo-500 outline-none">
                             <button onclick="resetSplitPoint()" class="text-xs bg-white border border-slate-200 px-4 py-2 rounded-lg hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm font-bold">重設中位數</button>
                         </div>
                     </div>
-                    <div class="bg-indigo-100 p-3 rounded-xl border border-indigo-200">
-                        <p class="text-xs text-indigo-800 font-bold flex items-center">
-                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
-                            規則：前一半為「正取號碼」（下回排除），後一半為「備取號碼」（下回保留）。
+                    <div class="bg-indigo-100 p-4 rounded-xl border border-indigo-200">
+                        <p class="text-sm text-indigo-800 font-bold flex items-start">
+                            <svg class="w-5 h-5 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                            <span>規則：前一半為「正取」（下回排除），後一半為「備取」（保留於池中）。<br><span class="text-xs opacity-75 font-normal">系統會根據排除人數自動計算最大可抽籤回數。</span></span>
                         </p>
                     </div>
                 </div>
@@ -118,7 +118,6 @@
 
         <!-- 結果面板 -->
         <div id="result-panel" class="hidden space-y-6">
-            <!-- 歷史紀錄 -->
             <div id="history-container" class="flex flex-wrap gap-3"></div>
 
             <div class="bg-white rounded-3xl shadow-2xl p-10 text-center border border-slate-100 relative overflow-hidden">
@@ -127,16 +126,14 @@
                     <p class="text-indigo-600 font-bold animate-pulse text-xl">正在智慧抽取...</p>
                 </div>
 
-                <div id="round-label" class="inline-block px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-bold mb-6 tracking-widest shadow-lg">第一回抽籤</div>
+                <div id="round-label" class="inline-block px-6 py-2 bg-indigo-600 text-white rounded-full text-sm font-bold mb-6 tracking-widest shadow-lg">第 1 / 9 回</div>
                 
-                <div id="number-display" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10">
-                    <!-- 數字卡片 -->
-                </div>
+                <div id="number-display" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10"></div>
 
                 <div class="flex flex-col md:flex-row justify-center gap-4 border-t pt-8">
                     <button id="btn-continue" onclick="continueDraw()" class="flex-1 bg-emerald-500 text-white py-5 rounded-2xl font-black text-xl hover:bg-emerald-600 transition shadow-lg active:scale-[0.98] flex items-center justify-center">
                         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
-                        接續抽籤 (剩餘: <span id="remaining-rounds">2</span> 回)
+                        接續抽籤
                     </button>
                     <button onclick="resetSystem()" class="flex-1 bg-slate-500 text-white py-5 rounded-2xl font-black text-xl hover:bg-slate-600 transition shadow-lg active:scale-[0.98] flex items-center justify-center">
                         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -146,12 +143,9 @@
             </div>
         </div>
 
-        <!-- 自定義彈窗 -->
+        <!-- 訊息彈窗 -->
         <div id="message-box" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-in transform transition-all border border-slate-100">
-                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                </div>
+            <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100">
                 <p id="message-text" class="text-xl font-bold text-slate-800 mb-6"></p>
                 <button onclick="closeMessage()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-slate-700 transition shadow-md">知道了</button>
             </div>
@@ -160,8 +154,37 @@
 
     <script>
         let currentRound = 1;
+        let totalMaxRounds = 1;
         let drawnHistory = []; 
-        let allExcludedNumbers = new Set(); // 存放正取（已排除）的號碼
+        let allExcludedNumbers = new Set(); 
+
+        // 自動計算最大回數
+        function calculateEstimatedRounds() {
+            const max = parseInt(document.getElementById('maxNumber').value) || 0;
+            const count = parseInt(document.getElementById('drawCount').value) || 0;
+            
+            if (max <= 0 || count <= 0 || count > max) {
+                document.getElementById('rounds-estimate').innerText = "設定無效";
+                return 1;
+            }
+
+            // 每回排除人數 = floor(抽籤人數 / 2)
+            const excludePerRound = Math.floor(count / 2);
+            
+            let rounds = 1;
+            if (excludePerRound > 0) {
+                // 公式：第一回消耗 count 人，之後每回消耗 excludePerRound 人
+                // 剩餘人數 pool = max - count
+                // 可額外進行回數 = floor(pool / excludePerRound)
+                rounds = Math.floor((max - count) / excludePerRound) + 1;
+            } else {
+                // 如果每回都不排除(抽1人時)，理論回數為 pool/count，但為了系統穩定，設為班級人數
+                rounds = Math.floor(max / count);
+            }
+
+            document.getElementById('rounds-estimate').innerText = `預計可抽 ${rounds} 回`;
+            return rounds;
+        }
 
         function adjustValue(id, delta) {
             const input = document.getElementById(id);
@@ -169,6 +192,7 @@
             if (val < 1) val = 1;
             input.value = val;
             if (id === 'maxNumber') resetSplitPoint();
+            calculateEstimatedRounds();
         }
 
         function resetSplitPoint() {
@@ -194,12 +218,15 @@
         }
 
         function startInitialDraw() {
+            totalMaxRounds = calculateEstimatedRounds();
             const max = parseInt(document.getElementById('maxNumber').value);
             const count = parseInt(document.getElementById('drawCount').value);
+            
             if (count > max) {
-                showMessage(`抽籤人數 (${count}) 不能大於總人數 (${max})！`);
+                showMessage(`抽籤人數不能大於總人數！`);
                 return;
             }
+
             resetState();
             executeDraw();
         }
@@ -243,7 +270,8 @@
 
                 if (poolA.length + poolB.length < count) {
                     overlay.classList.add('hidden');
-                    showMessage('剩餘人數不足以進行抽籤！');
+                    showMessage('池中剩餘人數不足以湊滿一回！');
+                    document.getElementById('btn-continue').style.display = 'none';
                     return;
                 }
 
@@ -270,7 +298,8 @@
                 }
                 if (pool.length < count) {
                     overlay.classList.add('hidden');
-                    showMessage('剩餘人數不足以進行抽籤！');
+                    showMessage('池中剩餘人數不足以湊滿一回！');
+                    document.getElementById('btn-continue').style.display = 'none';
                     return;
                 }
                 winners = pickRandom(pool, count);
@@ -278,7 +307,7 @@
 
             drawnHistory.push(winners);
             
-            // 將前一半號碼加入排除名單（正取）
+            // 排除前一半號碼
             const excludeLimit = Math.floor(winners.length / 2);
             for (let k = 0; k < excludeLimit; k++) {
                 allExcludedNumbers.add(winners[k]);
@@ -299,11 +328,8 @@
 
         function renderResults() {
             const label = document.getElementById('round-label');
-            label.innerText = `第 ${currentRound} 回抽籤`;
+            label.innerText = `第 ${currentRound} / ${totalMaxRounds} 回`;
             
-            const colors = ['bg-indigo-600', 'bg-purple-600', 'bg-fuchsia-600'];
-            label.className = `inline-block px-6 py-2 ${colors[currentRound-1] || 'bg-slate-600'} text-white rounded-full text-sm font-bold mb-6 tracking-widest shadow-lg`;
-
             const display = document.getElementById('number-display');
             display.innerHTML = '';
             
@@ -314,17 +340,16 @@
                 const card = document.createElement('div');
                 const isExcluded = index < excludeLimit;
                 
-                // 改為藍色 (blue) 與 綠色 (emerald)
-                card.className = `number-card bg-white border-2 ${isExcluded ? 'border-blue-200' : 'border-emerald-200'} rounded-3xl flex flex-col items-center justify-center p-6 shadow-xl relative group`;
+                card.className = `number-card bg-white border-2 ${isExcluded ? 'border-blue-200 shadow-blue-50' : 'border-emerald-200 shadow-emerald-50'} rounded-3xl flex flex-col items-center justify-center p-6 shadow-xl relative group`;
                 card.style.animationDelay = `${index * 0.1}s`;
                 
                 const tag = document.createElement('div');
                 tag.className = `status-tag ${isExcluded ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white'}`;
-                tag.innerText = isExcluded ? '正取' : '備取';
+                tag.innerText = isExcluded ? '正取號碼' : '備取號碼';
                 card.appendChild(tag);
 
                 card.innerHTML += `
-                    <span class="text-xs font-bold text-slate-400 mb-1 uppercase tracking-tighter">號碼</span>
+                    <span class="text-xs font-bold text-slate-400 mb-1 tracking-tighter">號碼</span>
                     <span class="text-4xl md:text-5xl font-black ${isExcluded ? 'text-blue-600' : 'text-emerald-600'}">${num}</span>
                 `;
                 display.appendChild(card);
@@ -333,15 +358,16 @@
             renderHistory();
 
             const continueBtn = document.getElementById('btn-continue');
-            const remaining = 3 - currentRound;
-            document.getElementById('remaining-rounds').innerText = remaining;
             
-            if (remaining <= 0) {
-                continueBtn.classList.add('opacity-40', 'grayscale', 'cursor-not-allowed');
-                continueBtn.disabled = true;
+            // 檢查是否還能進行下一回 (剩餘人數是否大於等於 drawCount)
+            const max = parseInt(document.getElementById('maxNumber').value);
+            const count = parseInt(document.getElementById('drawCount').value);
+            const remainingCount = max - allExcludedNumbers.size;
+
+            if (remainingCount < count) {
+                continueBtn.style.display = 'none';
             } else {
-                continueBtn.classList.remove('opacity-40', 'grayscale', 'cursor-not-allowed');
-                continueBtn.disabled = false;
+                continueBtn.style.display = 'flex';
             }
         }
 
@@ -362,7 +388,7 @@
                         ${idx + 1}
                     </div>
                     <div class="flex flex-col">
-                        <span>第 ${idx + 1} 回結果：<span class="text-blue-600">${excludedStr} (正)</span> | <span class="text-emerald-600">${retainedStr} (備)</span></span>
+                        <span>第 ${idx + 1} 回：<span class="text-blue-600">${excludedStr || '無'} (正)</span> | <span class="text-emerald-600">${retainedStr} (備)</span></span>
                     </div>
                 `;
                 historyContainer.appendChild(box);
@@ -370,7 +396,6 @@
         }
 
         function continueDraw() {
-            if (currentRound >= 3) return;
             currentRound++;
             executeDraw();
         }
@@ -379,14 +404,17 @@
             resetState();
             document.getElementById('setup-panel').classList.remove('hidden');
             document.getElementById('result-panel').classList.add('hidden');
-            const continueBtn = document.getElementById('btn-continue');
-            continueBtn.classList.remove('opacity-40', 'grayscale', 'cursor-not-allowed');
-            continueBtn.disabled = false;
+            document.getElementById('btn-continue').style.display = 'flex';
         }
+
+        // 初始化監聽
+        document.getElementById('maxNumber').addEventListener('input', calculateEstimatedRounds);
+        document.getElementById('drawCount').addEventListener('input', calculateEstimatedRounds);
 
         window.onload = () => {
             resetSplitPoint();
             toggleSegmentUI();
+            calculateEstimatedRounds();
         };
     </script>
 </body>
