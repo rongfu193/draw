@@ -38,13 +38,23 @@
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
+
+        /* 確保 Logo 沒載入時不顯示破碎圖示 */
+        .school-logo {
+            object-fit: contain;
+            min-height: 80px;
+        }
     </style>
 </head>
 <body class="p-4 md:p-10">
     <div class="max-w-4xl mx-auto">
-        <!-- 標題 -->
+        <!-- 標題與校徽 -->
         <header class="text-center mb-10">
-            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">榮富作業抽查抽籤系統</h1>
+            <div class="flex flex-col items-center mb-4">
+                
+                <img src="lfes.png" alt="榮富國小校徽" class="school-logo h-24 w-auto mb-4 drop-shadow-md" onerror="this.parentElement.removeChild(this)">
+                <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">榮富作業抽查抽籤系統</h1>
+            </div>
             <p class="text-slate-500 font-medium">智慧分段・公平隨機・接續抽籤</p>
         </header>
 
@@ -150,7 +160,6 @@
         let drawnHistory = []; 
         let allUsedNumbers = new Set();
 
-        // 輸入值微調
         function adjustValue(id, delta) {
             const input = document.getElementById(id);
             let val = parseInt(input.value) + delta;
@@ -161,15 +170,13 @@
             }
         }
 
-        // 重設中位數
         function resetSplitPoint() {
-            const max = parseInt(document.getElementById('maxNumber').value);
+            const max = parseInt(document.getElementById('maxNumber').value || 30);
             const val = Math.floor(max / 2);
             document.getElementById('splitPoint').value = val;
             document.getElementById('split-val-text').innerText = val;
         }
 
-        // 分段 UI 開關
         function toggleSegmentUI() {
             const isChecked = document.getElementById('isSegmented').checked;
             const controls = document.getElementById('segment-controls');
@@ -180,7 +187,6 @@
             badge.style.display = isChecked ? 'block' : 'none';
         }
 
-        // 監聽分段點手動輸入
         document.getElementById('splitPoint').addEventListener('input', (e) => {
             document.getElementById('split-val-text').innerText = e.target.value || '0';
         });
@@ -219,13 +225,11 @@
             const isSegmented = document.getElementById('isSegmented').checked;
             const split = parseInt(document.getElementById('splitPoint').value);
 
-            // 顯示抽籤動畫
             const overlay = document.getElementById('drawing-overlay');
             overlay.classList.remove('hidden');
             document.getElementById('setup-panel').classList.add('hidden');
             document.getElementById('result-panel').classList.remove('hidden');
 
-            // 模擬計算過程
             await new Promise(resolve => setTimeout(resolve, 800));
 
             let winners = [];
@@ -241,11 +245,9 @@
                     }
                 }
 
-                // 分配名額：前段抽一半（無條件捨去），剩下給後段
                 let countA = Math.floor(count / 2);
                 let countB = count - countA;
 
-                // 若池子不夠，自動平衡名額
                 if (poolA.length < countA) {
                     let diff = countA - poolA.length;
                     countA = poolA.length;
@@ -257,7 +259,6 @@
                     countA += diff;
                 }
 
-                // 若總量還是不夠
                 if (poolA.length + poolB.length < count) {
                     overlay.classList.add('hidden');
                     showMessage('剩餘人數不足以進行抽籤！');
@@ -287,7 +288,6 @@
             renderResults();
         }
 
-        // Fisher-Yates Shuffle
         function pickRandom(array, n) {
             let result = [...array];
             for (let i = result.length - 1; i > 0; i--) {
@@ -301,7 +301,6 @@
             const label = document.getElementById('round-label');
             label.innerText = `第 ${currentRound} 回抽籤`;
             
-            // 設定回數顏色
             const colors = ['bg-indigo-600', 'bg-purple-600', 'bg-fuchsia-600'];
             label.className = `inline-block px-6 py-2 ${colors[currentRound-1] || 'bg-slate-600'} text-white rounded-full text-sm font-bold mb-6 tracking-widest shadow-lg`;
 
@@ -312,7 +311,6 @@
             currentWinners.forEach((num, index) => {
                 const card = document.createElement('div');
                 card.className = 'number-card bg-white border-2 border-slate-100 rounded-3xl flex flex-col items-center justify-center p-6 shadow-xl relative group';
-                // 延遲動畫效果
                 card.style.animationDelay = `${index * 0.1}s`;
                 
                 card.innerHTML = `
@@ -368,7 +366,6 @@
             document.getElementById('setup-panel').classList.remove('hidden');
             document.getElementById('result-panel').classList.add('hidden');
             
-            // 還原按鈕
             const continueBtn = document.getElementById('btn-continue');
             continueBtn.classList.remove('opacity-40', 'grayscale', 'cursor-not-allowed');
             continueBtn.disabled = false;
