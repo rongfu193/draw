@@ -51,7 +51,6 @@
         <!-- 標題與校徽 -->
         <header class="text-center mb-10">
             <div class="flex flex-col items-center mb-4">
-                
                 <img src="lfes.png" alt="榮富國小校徽" class="school-logo h-24 w-auto mb-4 drop-shadow-md" onerror="this.parentElement.removeChild(this)">
                 <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">榮富作業抽查抽籤系統</h1>
             </div>
@@ -265,7 +264,10 @@
                     return;
                 }
 
-                winners = [...pickRandom(poolA, countA), ...pickRandom(poolB, countB)];
+                // 合併前後段抽取的結果（pickRandom 已經是洗牌過的）
+                // 為了讓顯示徹底隨機，將 A 與 B 的結果再次打亂
+                let combined = [...pickRandom(poolA, countA), ...pickRandom(poolB, countB)];
+                winners = pickRandom(combined, combined.length); 
             } else {
                 let pool = [];
                 for (let i = 1; i <= max; i++) {
@@ -280,7 +282,7 @@
                 winners = pickRandom(pool, count);
             }
 
-            winners.sort((a, b) => a - b);
+            // 移除原本的 .sort()，確保顯示順序為隨機挑選的順序
             drawnHistory.push(winners);
             winners.forEach(n => allUsedNumbers.add(n));
 
