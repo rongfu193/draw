@@ -28,20 +28,21 @@
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
         }
 
-        .shimmer {
-            background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
         .school-logo {
             object-fit: contain;
             min-height: 80px;
+        }
+
+        /* 標示正取與備取的視覺效果 */
+        .status-tag {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: bold;
+            z-index: 20;
         }
     </style>
 </head>
@@ -53,7 +54,7 @@
                 <img src="lfes.png" alt="榮富國小校徽" class="school-logo h-24 w-auto mb-4 drop-shadow-md" onerror="this.parentElement.removeChild(this)">
                 <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">榮富作業抽查抽籤系統</h1>
             </div>
-            <p class="text-slate-500 font-medium">智慧分段・隨機啟始・交錯輪流</p>
+            <p class="text-slate-500 font-medium">智慧分段・隨機啟始・正備取遞延邏輯</p>
         </header>
 
         <!-- 設定面板 -->
@@ -92,16 +93,20 @@
                             <input type="checkbox" id="isSegmented" checked class="w-6 h-6 text-indigo-600 border-slate-300 rounded-lg focus:ring-indigo-500 transition cursor-pointer" onchange="toggleSegmentUI()">
                             <span class="ml-3 text-slate-700 font-bold text-lg group-hover:text-indigo-600 transition">啟用智慧分段輪流抽籤</span>
                         </label>
-                        <span id="segment-badge" class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">每回隨機啟始</span>
                     </div>
                     
                     <div id="segment-controls" class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4 transition-all duration-300">
                         <span class="text-sm text-slate-500">分段點：</span>
                         <div class="flex items-center space-x-2">
                             <input type="number" id="splitPoint" value="15" class="w-24 text-center border-2 border-slate-200 rounded-lg p-2 font-bold focus:border-indigo-500 outline-none">
-                            <button onclick="resetSplitPoint()" class="text-xs bg-white border border-slate-200 px-4 py-2 rounded-lg hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm font-bold">重設為中位數</button>
+                            <button onclick="resetSplitPoint()" class="text-xs bg-white border border-slate-200 px-4 py-2 rounded-lg hover:border-indigo-400 hover:text-indigo-600 transition shadow-sm font-bold">重設中位數</button>
                         </div>
-                        <p class="text-xs text-slate-400">※ 每回首位隨機，後續交錯抽取前後段。</p>
+                    </div>
+                    <div class="bg-indigo-100 p-3 rounded-xl border border-indigo-200">
+                        <p class="text-xs text-indigo-800 font-bold flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                            規則：前一半為「正取號碼」（下回排除），後一半為「備取號碼」（下回保留）。
+                        </p>
                     </div>
                 </div>
             </div>
@@ -156,16 +161,14 @@
     <script>
         let currentRound = 1;
         let drawnHistory = []; 
-        let allUsedNumbers = new Set();
+        let allExcludedNumbers = new Set(); // 存放正取（已排除）的號碼
 
         function adjustValue(id, delta) {
             const input = document.getElementById(id);
             let val = parseInt(input.value) + delta;
             if (val < 1) val = 1;
             input.value = val;
-            if (id === 'maxNumber') {
-                resetSplitPoint();
-            }
+            if (id === 'maxNumber') resetSplitPoint();
         }
 
         function resetSplitPoint() {
@@ -177,10 +180,8 @@
         function toggleSegmentUI() {
             const isChecked = document.getElementById('isSegmented').checked;
             const controls = document.getElementById('segment-controls');
-            const badge = document.getElementById('segment-badge');
             controls.style.opacity = isChecked ? '1' : '0.4';
             controls.style.pointerEvents = isChecked ? 'auto' : 'none';
-            badge.style.display = isChecked ? 'block' : 'none';
         }
 
         function showMessage(text) {
@@ -206,7 +207,7 @@
         function resetState() {
             currentRound = 1;
             drawnHistory = [];
-            allUsedNumbers.clear();
+            allExcludedNumbers.clear();
         }
 
         async function executeDraw() {
@@ -228,7 +229,7 @@
                 let poolA = []; 
                 let poolB = []; 
                 for (let i = 1; i <= max; i++) {
-                    if (!allUsedNumbers.has(i)) {
+                    if (!allExcludedNumbers.has(i)) {
                         if (i <= split) poolA.push(i);
                         else poolB.push(i);
                     }
@@ -237,7 +238,6 @@
                 let countA = Math.floor(count / 2);
                 let countB = count - countA;
 
-                // 若分段人數不足，自動補齊
                 if (poolA.length < countA) { countB += (countA - poolA.length); countA = poolA.length; }
                 if (poolB.length < countB) { countA += (countB - poolB.length); countB = poolB.length; }
 
@@ -250,34 +250,23 @@
                 let picksA = pickRandom(poolA, countA);
                 let picksB = pickRandom(poolB, countB);
 
-                // 每一回的第一個號碼隨機從 A 或 B 段產出
                 let startWithA = Math.random() < 0.5;
                 let i = 0, j = 0;
 
                 while (winners.length < count) {
                     if (startWithA) {
-                        if (i < picksA.length) {
-                            winners.push(picksA[i++]);
-                            startWithA = false; // 切換到 B
-                        } else if (j < picksB.length) {
-                            winners.push(picksB[j++]); // A 抽完了，補 B
-                        }
+                        if (i < picksA.length) { winners.push(picksA[i++]); startWithA = false; }
+                        else if (j < picksB.length) { winners.push(picksB[j++]); }
                     } else {
-                        if (j < picksB.length) {
-                            winners.push(picksB[j++]);
-                            startWithA = true; // 切換到 A
-                        } else if (i < picksA.length) {
-                            winners.push(picksA[i++]); // B 抽完了，補 A
-                        }
+                        if (j < picksB.length) { winners.push(picksB[j++]); startWithA = true; }
+                        else if (i < picksA.length) { winners.push(picksA[i++]); }
                     }
-                    
-                    // 安全跳出
                     if (i >= picksA.length && j >= picksB.length) break;
                 }
             } else {
                 let pool = [];
                 for (let i = 1; i <= max; i++) {
-                    if (!allUsedNumbers.has(i)) pool.push(i);
+                    if (!allExcludedNumbers.has(i)) pool.push(i);
                 }
                 if (pool.length < count) {
                     overlay.classList.add('hidden');
@@ -288,7 +277,12 @@
             }
 
             drawnHistory.push(winners);
-            winners.forEach(n => allUsedNumbers.add(n));
+            
+            // 將前一半號碼加入排除名單（正取）
+            const excludeLimit = Math.floor(winners.length / 2);
+            for (let k = 0; k < excludeLimit; k++) {
+                allExcludedNumbers.add(winners[k]);
+            }
 
             overlay.classList.add('hidden');
             renderResults();
@@ -314,15 +308,24 @@
             display.innerHTML = '';
             
             const currentWinners = drawnHistory[currentRound - 1];
+            const excludeLimit = Math.floor(currentWinners.length / 2);
+
             currentWinners.forEach((num, index) => {
                 const card = document.createElement('div');
-                card.className = 'number-card bg-white border-2 border-slate-100 rounded-3xl flex flex-col items-center justify-center p-6 shadow-xl relative group';
+                const isExcluded = index < excludeLimit;
+                
+                // 改為藍色 (blue) 與 綠色 (emerald)
+                card.className = `number-card bg-white border-2 ${isExcluded ? 'border-blue-200' : 'border-emerald-200'} rounded-3xl flex flex-col items-center justify-center p-6 shadow-xl relative group`;
                 card.style.animationDelay = `${index * 0.1}s`;
                 
-                card.innerHTML = `
+                const tag = document.createElement('div');
+                tag.className = `status-tag ${isExcluded ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white'}`;
+                tag.innerText = isExcluded ? '正取號碼' : '備取號碼';
+                card.appendChild(tag);
+
+                card.innerHTML += `
                     <span class="text-xs font-bold text-slate-400 mb-1 uppercase tracking-tighter">號碼</span>
-                    <span class="text-4xl md:text-5xl font-black text-slate-800">${num}</span>
-                    <div class="absolute inset-0 border-4 border-indigo-500 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                    <span class="text-4xl md:text-5xl font-black ${isExcluded ? 'text-blue-600' : 'text-emerald-600'}">${num}</span>
                 `;
                 display.appendChild(card);
             });
@@ -349,11 +352,18 @@
                 const isCurrent = (idx + 1 === currentRound);
                 const box = document.createElement('div');
                 box.className = `flex items-center px-4 py-3 rounded-2xl text-sm font-bold border transition-all ${isCurrent ? 'bg-indigo-50 border-indigo-200 text-indigo-700 ring-2 ring-indigo-100' : 'bg-slate-50 border-slate-200 text-slate-500'}`;
+                
+                const excludeLimit = Math.floor(winners.length / 2);
+                const excludedStr = winners.slice(0, excludeLimit).join('、');
+                const retainedStr = winners.slice(excludeLimit).join('、');
+
                 box.innerHTML = `
                     <div class="w-6 h-6 rounded-full flex items-center justify-center mr-3 ${isCurrent ? 'bg-indigo-600 text-white' : 'bg-slate-300 text-white'} text-[10px]">
                         ${idx + 1}
                     </div>
-                    <span>第 ${idx + 1} 回結果：<span class="${isCurrent ? 'text-indigo-900' : 'text-slate-700'}">${winners.join('、')}</span></span>
+                    <div class="flex flex-col">
+                        <span>第 ${idx + 1} 回結果：<span class="text-blue-600">${excludedStr} (正)</span> | <span class="text-emerald-600">${retainedStr} (備)</span></span>
+                    </div>
                 `;
                 historyContainer.appendChild(box);
             });
